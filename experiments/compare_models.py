@@ -6,6 +6,7 @@ import zlib
 from collections import Counter
 
 def shannon_entropy(text):
+    if not text: return 0
     prob = [n/len(text) for n in Counter(text).values()]
     return -sum(p * np.log2(p) for p in prob)
 
@@ -19,38 +20,43 @@ def load_and_process(file_path):
     for i in iters:
         batch = [d for d in data if d['iteration'] == i]
         
-        # Si on a déjà le score (Sonnet)
+        # Détection du format : métrique pré-calculée ou texte brut
         if 'shannon_entropy' in batch[0]:
             scores = [d['shannon_entropy'] for d in batch]
-        # Sinon on le calcule (Haiku)
         else:
-            scores = [shannon_entropy(d['text']) for d in batch]
+            scores = [shannon_entropy(d.get('text', '')) for d in batch]
             
         entropy_avg.append(np.mean(scores))
     
     return iters, entropy_avg
 
-# Chemins
+# Configuration des chemins
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sonnet_file = os.path.join(BASE_DIR, "results", "extended_validation_complete.json")
 haiku_file = os.path.join(BASE_DIR, "results", "haiku_extended_validation.json")
 
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(12, 7))
 
+# Traitement Sonnet (La référence)
 if os.path.exists(sonnet_file):
-    x, h_sonnet = load_and_process(sonnet_file)
-    plt.plot(x, h_sonnet, label='Entropy (Sonnet)', color='red', linewidth=2)
-    print(f"✅ Sonnet traité.")
+    x_s, h_s = load_and_process(sonnet_file)
+    plt.plot(x_s, h_s, label='Entropy (Sonnet - Pro)', color='#e74c3c', linewidth=2.5)
+    print(f"✅ Données Sonnet intégrées.")
 
+# Traitement Haiku (Le test actuel)
 if os.path.exists(haiku_file):
-    x, h_haiku = load_and_process(haiku_file)
-    plt.plot(x, h_haiku, label='Entropy (Haiku)', color='orange', linestyle='--', linewidth=2)
-    print(f"✅ Haiku traité.")
+    x_h, h_h = load_and_process(haiku_file)
+    plt.plot(x_h, h_h, label='Entropy (Haiku - Light)', color='#f39c12', linestyle='--', linewidth=2.5)
+    print(f"✅ Données Haiku calculées.")
 
-plt.title('Divergence de l\'Entropie : Sonnet vs Haiku (Closed-Loop)')
-plt.xlabel('Itérations')
-plt.ylabel('Entropie de Shannon (Bits)')
+plt.title('Analyse de l\'Effondrement Entropique : Sonnet vs Haiku', fontsize=14)
+plt.xlabel('Itérations (Boucle Fermée)', fontsize=12)
+plt.ylabel('Entropie de Shannon (Bits)', fontsize=12)
 plt.legend()
-plt.grid(True, alpha=0.3)
-plt.savefig(os.path.join(BASE_DIR, "results", "model_comparison_entropy.png"))
-print(f"📊 Analyse terminée ! Image : results/model_comparison_entropy.png")
+plt.grid(True, which='both', linestyle='--', alpha=0.5)
+plt.tight_layout()
+
+# Sauvegarde
+output_path = os.path.join(BASE_DIR, "results", "model_comparison_entropy.png")
+plt.savefig(output_path)
+print(f"📊 Graphique comparatif généré : {output_path}")
